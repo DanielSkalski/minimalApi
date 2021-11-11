@@ -4,7 +4,10 @@ using MinimalApiTest.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddDbContext<PizzaDb>(options => options.UseInMemoryDatabase("Pizzas"));
+
+var connectionString = builder.Configuration.GetConnectionString("Pizzas") ?? "Data Source=Pizzas.db";
+
+builder.Services.AddSqlite<PizzaDb>(connectionString);
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c => 
@@ -100,7 +103,7 @@ app.MapPut("/pizzas/{id}", async (int id, EditPizzaDto pizzaEditDto, PizzaDb db)
 
     return Results.NoContent();
 })
-.Accepts<CreatePizzaDto>("application/json")
+.Accepts<EditPizzaDto>("application/json")
 .Produces(StatusCodes.Status204NoContent)
 .Produces(StatusCodes.Status404NotFound)
 .WithName("EditPizza")

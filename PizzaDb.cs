@@ -9,9 +9,4 @@ class PizzaDb : DbContext
     }
 
     public DbSet<Pizza> Pizzas { get; set; }
-
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    {
-        optionsBuilder.UseInMemoryDatabase("Pizzas");
-    }
 }
