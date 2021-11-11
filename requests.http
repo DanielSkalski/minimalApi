@@ -9,7 +9,8 @@ PUT https://localhost:7122/pizzas/2
 Content-Type: application/json
 
 {
-    "name": "Better Capriciosa!"
+    "name": "Better Capriciosa!",
+    "description": "Best pizza ever!"
 }
 
 

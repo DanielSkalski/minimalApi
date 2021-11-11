@@ -25,10 +25,10 @@ if (app.Environment.IsDevelopment())
 }
 
 var pizzas = new List<PizzaDto> {
-    new (1, "Margherita", DateTime.UtcNow),
-    new (2, "Capriciosa", DateTime.UtcNow),
-    new (3, "CzyPsy", DateTime.UtcNow),
-    new (4, "Wegetariańska", DateTime.UtcNow),
+    new (1, "Margherita", ""),
+    new (2, "Capriciosa", ""),
+    new (3, "CzyPsy", ""),
+    new (4, "Wegetariańska", ""),
 };
 
 app.UseSwagger();
@@ -36,77 +36,78 @@ app.UseSwaggerUI(c => {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "PizzaStore API V1");
 });
 
-app.MapGet("/", () => "Hello World MAC!");
-
-app.MapGet("/pizzas/{id}", (int id) =>
+app.MapGet("/pizzas/{id}", async (PizzaDb db, int id) =>
 {
-    var pizza = pizzas.SingleOrDefault(x => x.Id == id);
-    return pizza is not null ? Results.Ok(pizza) : Results.NotFound();
+    var pizza = await db.Pizzas.FindAsync(id);
+    if (pizza is null)
+    {
+        return Results.NotFound();
+    }
+    return Results.Ok(pizza);
 })
 .Produces<PizzaDto>(StatusCodes.Status200OK)
 .Produces(StatusCodes.Status404NotFound)
 .WithName("GetPizza")
 .WithTags("Getters");
 
-app.MapGet("/pizzas", (int? page, int? pageSize) =>
+app.MapGet("/pizzas", async (PizzaDb db) =>
 {
-    if (page.HasValue && pageSize.HasValue)
-    {
-        return pizzas.Skip((page.Value - 1) * pageSize.Value).Take(pageSize.Value);
-    }
-
-    return pizzas;
+    var pizzas = await db.Pizzas.ToListAsync();
+    return pizzas.Select(x => new PizzaDto(x.Id, x.Name, x.Description));
 })
 .Produces<List<PizzaDto>>(StatusCodes.Status200OK)
 .WithName("GetAllPizzas")
 .WithTags("Getters");
 
-app.MapDelete("/pizzas/{id}", (int id) =>
-{ 
-    pizzas.RemoveAll(x => x.Id == id);
+app.MapDelete("/pizzas/{id}", async (int id, PizzaDb db) =>
+{
+    var pizza = await db.Pizzas.FindAsync(id);
+
+    if (pizza is null) return Results.NoContent();
+
+    db.Pizzas.Remove(pizza);
+    await db.SaveChangesAsync();
+
     return Results.NoContent();
 })
-.Produces(StatusCodes.Status204NoContent);
+.Produces(StatusCodes.Status204NoContent)
+.WithName("DeletePizza");
 
-app.MapPost("/pizza", (CreatePizzaDto pizza) =>
+app.MapPost("/pizza", async (PizzaDb db, CreatePizzaDto pizza) =>
 {
-    var id = pizzas.MaxBy(x => x.Id)?.Id + 1 ?? 1;
-    var createdPizza = new PizzaDto(id, pizza.Name, DateTime.UtcNow);
+    var createdPizza = new Pizza { Name = pizza.Name };
 
-    pizzas.Add(createdPizza);
+    await db.Pizzas.AddAsync(createdPizza);
+    await db.SaveChangesAsync();
 
-    return Results.Created($"/pizzas/{id}", createdPizza);
+    return Results.Created($"/pizzas/{createdPizza.Id}", createdPizza);
 })
 .Accepts<CreatePizzaDto>("application/json")
 .Produces<PizzaDto>(StatusCodes.Status201Created)
 .WithName("CreatePizza")
 .WithTags("Creators");
 
-app.MapPut("/pizzas/{id}", (int id, EditPizzaDto pizzaEditDto) =>
+app.MapPut("/pizzas/{id}", async (int id, EditPizzaDto pizzaEditDto, PizzaDb db) =>
 {
-    var pizzaToEditIndex = pizzas.FindIndex(x => x.Id == id);
-    var pizzaToEdit = pizzaToEditIndex > -1
-        ? pizzas[pizzaToEditIndex]
-        : null;
+    var pizza = await db.Pizzas.FindAsync(id);
 
-    if (pizzaToEdit is null)
-    {
-        return Results.NotFound();
-    }
+    if (pizza is null) return Results.NotFound();
 
-    var editedPizza = pizzaToEdit with { Name = pizzaEditDto.Name };
+    pizza.Name = pizzaEditDto.Name;
+    pizza.Description = pizzaEditDto.Description;
 
-    pizzas[pizzaToEditIndex] = editedPizza;
-    return Results.Ok(editedPizza);
+    await db.SaveChangesAsync();
+
+    return Results.NoContent();
 })
 .Accepts<CreatePizzaDto>("application/json")
-.Produces<PizzaDto>(StatusCodes.Status200OK)
+.Produces(StatusCodes.Status204NoContent)
 .Produces(StatusCodes.Status404NotFound)
 .WithName("EditPizza")
 .WithTags("Editors");
 
 app.Run();
 
-public record PizzaDto(int Id, string Name, DateTime CreatedAt);
+public record PizzaDto(int Id, string Name, string Description);
 public record CreatePizzaDto(string Name);
-public record EditPizzaDto(string Name);
+public record EditPizzaDto(string Name, string Description);
