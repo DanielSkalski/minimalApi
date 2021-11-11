@@ -1,0 +1,31 @@
+GET https://localhost:7122/pizzas
+
+###
+GET https://localhost:7122/pizzas/2
+
+
+###
+PUT https://localhost:7122/pizzas/2
+Content-Type: application/json
+
+{
+    "name": "Better Capriciosa!"
+}
+
+
+###
+DELETE https://localhost:7122/pizzas/2
+
+###
+GET https://localhost:7122/pizzas
+    ?page=3
+    &pageSize=2
+
+###
+POST https://localhost:7122/pizza
+Content-Type: application/json
+
+{
+    "id": 5,
+    "name": "Milo"
+}
