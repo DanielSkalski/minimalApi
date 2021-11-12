@@ -2,6 +2,9 @@ using Microsoft.OpenApi.Models;
 using Microsoft.EntityFrameworkCore;
 using MinimalApiTest.Models;
 
+
+const string AllowFrontendOrigin = "_allowFrontendOrigin";
+
 var builder = WebApplication.CreateBuilder(args);
 
 
@@ -20,6 +23,12 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
+builder.Services.AddCors(options => 
+{
+    options.AddPolicy(name: AllowFrontendOrigin,
+        config => config.WithOrigins("*"));
+});
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -27,17 +36,12 @@ if (app.Environment.IsDevelopment())
     app.UseDeveloperExceptionPage();
 }
 
-var pizzas = new List<PizzaDto> {
-    new (1, "Margherita", ""),
-    new (2, "Capriciosa", ""),
-    new (3, "CzyPsy", ""),
-    new (4, "Wegetariańska", ""),
-};
-
 app.UseSwagger();
 app.UseSwaggerUI(c => {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "PizzaStore API V1");
 });
+
+app.UseCors(AllowFrontendOrigin);
 
 app.MapGet("/pizzas/{id}", async (PizzaDb db, int id) =>
 {
